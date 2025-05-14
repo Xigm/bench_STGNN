@@ -1,0 +1,29 @@
+// .vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "🛠 Debug experiments.run_static_graph",
+        "type": "debugpy",
+        "request": "launch",
+        // Equivalente a: python -m experiments.main
+        "module": "experiments.run_static_graph",
+        // Directorio raíz del proyecto que contiene lib/ y experiments/
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "env": {
+          // Añade project_root a sys.path para que importe lib/
+          "PYTHONPATH": "${workspaceFolder}",
+        },
+        "justMyCode": false,
+        "args": [
+          "config=benchmarks",
+          "dataset=la",
+          "model=traffic_transformer",
+          "embedding=none",
+          "epochs=10"
+        ]
+      }
+    ]
+  }
+  

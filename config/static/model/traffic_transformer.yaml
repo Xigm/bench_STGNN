@@ -1,0 +1,15 @@
+# @package _global_
+
+#### Model params #############################################################
+model:
+  name: traffic_transformer
+  hparams:
+    hidden_size: 16
+    kernel_size: 2
+    n_layers: 1
+    n_heads: 4
+    activation: 'elu'
+
+dataset:
+  connectivity:
+    layout: csr
