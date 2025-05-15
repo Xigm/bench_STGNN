@@ -18,7 +18,8 @@ from lib.utils import find_devices, cfg_to_python
 
 from tsl.nn.models.stgn.dcrnn_model import DCRNNModel as DCRNNModelTSL 
 from mig_models.traffic_transformer import TrafficTransformer
-from mig_extras.callbacks import MetricsHistory, save_plot_history
+from mig_models.DCGRU import DCRNNModel
+from mig_extras.callbacks import MetricsHistory
 
 
 def get_model_class(model_str):
@@ -50,6 +51,8 @@ def get_model_class(model_str):
     # Mig Models #####################################################
     elif model_str == 'traffic_transformer':
         model = TrafficTransformer
+    elif model_str == 'dcrnn_mig':
+        model = DCRNNModel
     else:
         raise NotImplementedError(f'Model "{model_str}" not available.')
     return model
@@ -88,6 +91,13 @@ def run_traffic(cfg: DictConfig):
     # dataset_cfg = DictConfig({"name" : "la"})
     dataset = get_dataset(cfg.dataset)
 
+    # add to dataset as inputs the shifted past values as a second channel
+    past_values = dataset.dataframe().shift( 7 * 24 * 12 + 1, fill_value=0.0).values   
+    
+    # add a fourth dimension to past_values
+    # past_values = np.expand_dims(past_values, axis=-1)
+    # dataset.add_covariate('past_values', past_values, pattern='t n')
+
     covariates = dict()
     if cfg.get('add_exogenous'):
         assert not isinstance(dataset, LocalGlobalGPVARDataset)
@@ -102,12 +112,20 @@ def run_traffic(cfg: DictConfig):
                                           horizon=cfg.horizon,
                                           window=cfg.window,
                                           stride=cfg.stride)
+    
+    input_size = torch_dataset.n_channels
+    
+    # past_values = np.expand_dims(past_values, axis=-1)
+    # torch_dataset.add_exogenous('past_values', past_values)
+    # input_size = input_size + 1
+
     if cfg.get('mask_as_exog', False) and 'u' in torch_dataset:
         torch_dataset.update_input_map(u=['u', 'mask'])
 
     scale_axis = (0,) if cfg.get('scale_axis') == 'node' else (0, 1)
     transform = {
-        'target': StandardScaler(axis=scale_axis)
+        'target': StandardScaler(axis=scale_axis),
+        # 'past_values': StandardScaler(axis=scale_axis),
     }
 
     dm = SpatioTemporalDataModule(
@@ -133,7 +151,7 @@ def run_traffic(cfg: DictConfig):
 
     d_exog = torch_dataset.input_map.u.shape[-1] if 'u' in torch_dataset else 0
     model_kwargs = dict(n_nodes=torch_dataset.n_nodes,
-                        input_size=torch_dataset.n_channels,
+                        input_size=input_size,
                         exog_size=d_exog,
                         output_size=torch_dataset.n_channels,
                         weighted_graph=torch_dataset.edge_weight is not None,
@@ -202,12 +220,7 @@ def run_traffic(cfg: DictConfig):
     )
 
     metrics_callback = MetricsHistory(
-        log_dir=cfg.run.dir,
-        log_name=cfg.run.name,
-        log_metrics=log_metrics,
-        log_train_metrics=True,
-        log_val_metrics=True,
-        log_test_metrics=False
+        log_dir=cfg.run.dir
     )
 
     trainer = Trainer(max_epochs=cfg.epochs,
@@ -217,7 +230,7 @@ def run_traffic(cfg: DictConfig):
                       accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=find_devices(1),
                       gradient_clip_val=cfg.grad_clip_val,
-                      callbacks=[early_stop_callback, checkpoint_callback])
+                      callbacks=[early_stop_callback, checkpoint_callback, metrics_callback])
 
     load_model_path = cfg.get('load_model_path')
     if load_model_path is not None:
@@ -233,8 +246,6 @@ def run_traffic(cfg: DictConfig):
 
     predictor.freeze()
     trainer.test(predictor, dataloaders=dm.test_dataloader())
-
-    save_plot_history(metrics_callback)
 
     exp_logger.finalize('success')
 

@@ -156,7 +156,7 @@ class TrafficTransformer(BaseModel):
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=hidden_size, nhead=n_heads,
-            dropout=dropout, dim_feedforward=hidden_size*4)
+            dropout=dropout, dim_feedforward=hidden_size*2)
         
         self.transformer = nn.TransformerEncoder(encoder_layer,
                                                  num_layers=n_layers)

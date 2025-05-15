@@ -3,5 +3,5 @@
 optimizer:
   name: Adam
   hparams:
-    lr: 0.01
+    lr: 0.0025
     weight_decay: 0

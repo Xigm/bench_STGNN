@@ -17,7 +17,7 @@ add_exogenous: True
 
 model:
   hparams:
-    hidden_size: 16
+    hidden_size: 64
 
 embedding:
   emb_size: 32

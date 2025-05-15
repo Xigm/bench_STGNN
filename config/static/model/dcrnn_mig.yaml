@@ -2,7 +2,7 @@
 
 #### Model params #############################################################
 model:
-  name: dcrnn_TSL
+  name: dcrnn_mig
   hparams:
     hidden_size: 64
     kernel_size: 2

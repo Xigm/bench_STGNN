@@ -19,9 +19,9 @@
         "args": [
           "config=benchmarks",
           "dataset=la",
-          "model=traffic_transformer",
+          "model=dcrnn_mig",
           "embedding=none",
-          "epochs=10"
+          "epochs=15"
         ]
       }
     ]
